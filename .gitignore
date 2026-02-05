@@ -1,0 +1,16 @@
+/target
+
+# Build artifacts
+*.tar.gz
+pkg/usr/local/bin/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

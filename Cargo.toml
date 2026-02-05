@@ -1,0 +1,87 @@
+[package]
+name = "tjvox"
+version = "0.1.0"
+edition = "2021"
+authors = ["tjnome"]
+description = "macOS-style voice dictation for Linux"
+license = "MIT"
+repository = "https://github.com/tjnome/tjvox"
+rust-version = "1.70"
+
+[[bin]]
+name = "tjvox"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full", "process", "rt-multi-thread"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# Configuration
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+dirs = "6.0"
+
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+
+# Process management
+which = "8.0"
+libc = "0.2"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Utilities
+uuid = { version = "1.0", features = ["v4"] }
+num_cpus = "1.16"
+
+# Text replacements
+regex = "1.12"
+
+# History storage
+rusqlite = { version = "0.32", features = ["bundled"] }
+chrono = "0.4"
+
+# Whisper transcription
+whisper-rs = "0.15"
+hound = "3.5"
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+serde_json = "1.0"
+
+# Audio capture (PipeWire native)
+pipewire = "0.8"
+
+# Clipboard (Wayland native, wlroots compositors)
+wl-clipboard-rs = "0.9"
+
+# Keyboard layout-aware input (xkbcommon + ydotoold socket)
+xkbcommon = "0.8"
+
+# GUI (optional)
+gtk4 = { version = "0.9", optional = true }
+cairo-rs = { version = "0.20", optional = true, features = ["v1_18"] }
+async-channel = { version = "2.3", optional = true }
+ksni = { version = "0.3", optional = true }
+libloading = { version = "0.8", optional = true }
+
+# Push-to-talk evdev monitoring (optional)
+evdev = { version = "0.12", optional = true }
+
+[features]
+default = ["gui"]
+gui = ["dep:gtk4", "dep:cairo-rs", "dep:async-channel", "dep:ksni", "dep:libloading"]
+cuda = ["whisper-rs/cuda"]
+ptt = ["dep:evdev"]
+
+[dev-dependencies]
+tempfile = "3.10"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true

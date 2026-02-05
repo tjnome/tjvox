@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=TJvox
+Comment=macOS-style voice dictation for Linux
+Exec=/usr/local/bin/tjvox gui
+Type=Application
+Terminal=false
+Categories=Audio;Utility;
+Keywords=speech;voice;dictation;transcription;
+Icon=tjvox
+StartupNotify=false
