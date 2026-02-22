@@ -1,0 +1,51 @@
+[audio]
+sample_rate = 16000
+channels = 1
+format = "wav"
+temp_dir = "/tmp/tjvox"
+
+[transcription]
+model = "base"
+# models_dir = "/absolute/path/to/tjvox/models"
+language = "en"
+# threads = 4
+remove_filler_words = false
+
+[whisper]
+mode = "cold"
+
+[output]
+delay_ms = 100
+paste_delay_ms = 50
+append_trailing_space = true
+method = "auto"
+
+[ui]
+show_notifications = true
+notification_timeout_ms = 3000
+
+[overlay]
+enabled = true
+width = 280
+height = 50
+position = "bottom-center"
+opacity = 0.85
+
+[replacements]
+enabled = true
+# file = "/absolute/path/to/replacements.toml"
+
+[history]
+enabled = true
+max_entries = 1000
+
+[input]
+# ptt_key = "KEY_F13"
+
+[llm]
+enabled = false
+endpoint = "http://localhost:11434/v1/chat/completions"
+api_key = ""
+model = "llama3"
+prompt = "Fix grammar and punctuation. Output only the corrected text."
+timeout_ms = 5000
