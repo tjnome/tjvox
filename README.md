@@ -37,13 +37,13 @@ sudo dnf install cmake clang-devel gcc-c++ pipewire-devel gtk4-devel openssl-dev
 Ubuntu:
 
 ```bash
-sudo apt install cmake libclang-dev g++ libpipewire-0.3-dev libgtk-4-dev libssl-dev git pkg-config
+sudo apt install cmake libclang-dev g++ libpipewire-0.3-dev libgtk-4-dev libssl-dev libseccomp-dev liblcms2-dev git pkg-config
 ```
 
 Debian (Trixie/Forky):
 
 ```bash
-sudo apt install cmake libclang-dev g++ libpipewire-0.3-dev libgtk-4-dev libssl-dev git pkg-config
+sudo apt install cmake libclang-dev g++ libpipewire-0.3-dev libgtk-4-dev libssl-dev libseccomp-dev liblcms2-dev git pkg-config
 ```
 
 Arch:
@@ -104,6 +104,8 @@ Ubuntu/Debian:
 ```bash
 sudo apt install wl-clipboard ydotool wtype
 ```
+
+These are required for text output on Wayland. If missing, `install.sh` will warn and dictation output may not be inserted into focused apps.
 
 Arch:
 

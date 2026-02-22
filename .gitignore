@@ -1,4 +1,5 @@
 /target
+/target-*
 
 # Build artifacts
 *.tar.gz

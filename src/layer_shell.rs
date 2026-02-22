@@ -12,6 +12,8 @@ const EDGE_TOP: u32 = 2;
 const EDGE_BOTTOM: u32 = 3;
 
 type InitForWindowFn = unsafe extern "C" fn(*mut c_void);
+type IsSupportedFn = unsafe extern "C" fn() -> i32;
+type IsLayerWindowFn = unsafe extern "C" fn(*mut c_void) -> i32;
 type SetLayerFn = unsafe extern "C" fn(*mut c_void, u32);
 type SetAnchorFn = unsafe extern "C" fn(*mut c_void, u32, i32);
 type SetExclusiveZoneFn = unsafe extern "C" fn(*mut c_void, i32);
@@ -20,6 +22,7 @@ type SetNamespaceFn = unsafe extern "C" fn(*mut c_void, *const std::ffi::c_char)
 pub struct LayerShellFns {
     _lib: Library,
     init_for_window: InitForWindowFn,
+    is_layer_window: Option<IsLayerWindowFn>,
     set_layer: SetLayerFn,
     set_anchor: SetAnchorFn,
     set_exclusive_zone: SetExclusiveZoneFn,
@@ -37,16 +40,34 @@ impl LayerShellFns {
         };
 
         unsafe {
-            let init_for_window = *lib.get::<InitForWindowFn>(b"gtk_layer_init_for_window\0").ok()?;
+            if let Ok(is_supported) = lib.get::<IsSupportedFn>(b"gtk_layer_is_supported\0") {
+                if is_supported() == 0 {
+                    info!("gtk4-layer-shell present but unsupported by this session/compositor");
+                    return None;
+                }
+            }
+
+            let init_for_window = *lib
+                .get::<InitForWindowFn>(b"gtk_layer_init_for_window\0")
+                .ok()?;
+            let is_layer_window = lib
+                .get::<IsLayerWindowFn>(b"gtk_layer_is_layer_window\0")
+                .ok()
+                .map(|f| *f);
             let set_layer = *lib.get::<SetLayerFn>(b"gtk_layer_set_layer\0").ok()?;
             let set_anchor = *lib.get::<SetAnchorFn>(b"gtk_layer_set_anchor\0").ok()?;
-            let set_exclusive_zone = *lib.get::<SetExclusiveZoneFn>(b"gtk_layer_set_exclusive_zone\0").ok()?;
-            let set_namespace = *lib.get::<SetNamespaceFn>(b"gtk_layer_set_namespace\0").ok()?;
+            let set_exclusive_zone = *lib
+                .get::<SetExclusiveZoneFn>(b"gtk_layer_set_exclusive_zone\0")
+                .ok()?;
+            let set_namespace = *lib
+                .get::<SetNamespaceFn>(b"gtk_layer_set_namespace\0")
+                .ok()?;
 
             info!("gtk4-layer-shell loaded successfully");
             Some(Self {
                 _lib: lib,
                 init_for_window,
+                is_layer_window,
                 set_layer,
                 set_anchor,
                 set_exclusive_zone,
@@ -62,6 +83,14 @@ impl LayerShellFns {
 
         unsafe {
             (self.init_for_window)(ptr);
+
+            if let Some(is_layer_window) = self.is_layer_window {
+                if is_layer_window(ptr) == 0 {
+                    warn!("Layer shell init did not create a layer surface; skipping layer-shell setup");
+                    return;
+                }
+            }
+
             (self.set_layer)(ptr, LAYER_OVERLAY);
             (self.set_exclusive_zone)(ptr, -1);
 

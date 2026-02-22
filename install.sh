@@ -4,6 +4,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$SCRIPT_DIR/target}"
 
 CUDA_MODE="auto"
 
@@ -46,7 +47,53 @@ if ! command -v cargo >/dev/null 2>&1; then
     exit 1
 fi
 
+# Prefer system cmake when a broken Python shim is first in PATH
+if command -v cmake >/dev/null 2>&1; then
+    if ! cmake --version >/dev/null 2>&1; then
+        if [[ -x /usr/bin/cmake ]]; then
+            export CMAKE=/usr/bin/cmake
+            echo "Detected broken cmake shim in PATH; using /usr/bin/cmake"
+        else
+            echo "cmake in PATH is broken and /usr/bin/cmake is unavailable"
+            echo "Install a working cmake package and retry."
+            exit 1
+        fi
+    fi
+else
+    echo "cmake not found in PATH. Install cmake first."
+    exit 1
+fi
+
+if command -v pkg-config >/dev/null 2>&1; then
+    missing_pc=()
+    for pc in libseccomp lcms2; do
+        if ! pkg-config --exists "$pc"; then
+            missing_pc+=("$pc")
+        fi
+    done
+
+    if [[ ${#missing_pc[@]} -gt 0 ]]; then
+        echo "Missing required development libraries: ${missing_pc[*]}"
+        echo "Install build deps from README before running install.sh."
+        echo "Ubuntu/Debian hint: sudo apt install libseccomp-dev liblcms2-dev"
+        exit 1
+    fi
+fi
+
+MAKE_BIN=""
+if command -v make >/dev/null 2>&1; then
+    MAKE_BIN="$(command -v make)"
+elif command -v gmake >/dev/null 2>&1; then
+    MAKE_BIN="$(command -v gmake)"
+else
+    echo "No make implementation found (need make or gmake)."
+    echo "Install build essentials/base-devel and retry."
+    exit 1
+fi
+export CMAKE_MAKE_PROGRAM="$MAKE_BIN"
+
 echo "Building tjvox binary..."
+echo "Using target dir: $CARGO_TARGET_DIR"
 BUILD_ARGS=(--release --manifest-path "$SCRIPT_DIR/Cargo.toml")
 ENABLE_CUDA=false
 if [[ "$CUDA_MODE" == "on" ]]; then
@@ -68,7 +115,7 @@ fi
 cargo build "${BUILD_ARGS[@]}"
 
 mkdir -p "$HOME/.local/bin"
-cp "$SCRIPT_DIR/target/release/tjvox" "$HOME/.local/bin/tjvox"
+cp "$CARGO_TARGET_DIR/release/tjvox" "$HOME/.local/bin/tjvox"
 chmod +x "$HOME/.local/bin/tjvox"
 
 mkdir -p "$HOME/.config/tjvox"
