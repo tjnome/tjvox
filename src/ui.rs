@@ -68,7 +68,7 @@ impl UiManager {
         let timeout_ms = self.config.notification_timeout_ms;
 
         let output = Command::new("notify-send")
-            .args(&[
+            .args([
                 "--expire-time", &timeout_ms.to_string(),
                 title,
                 message,
@@ -88,7 +88,7 @@ impl UiManager {
     async fn show_kdialog(&self, title: &str, message: &str) -> Result<()> {
         let timeout_secs = (self.config.notification_timeout_ms / 1000).max(1);
         let _ = Command::new("kdialog")
-            .args(&[
+            .args([
                 "--passivepopup",
                 message,
                 &timeout_secs.to_string(),
@@ -102,7 +102,7 @@ impl UiManager {
 
     async fn show_zenity(&self, title: &str, message: &str) -> Result<()> {
         let _ = Command::new("zenity")
-            .args(&[
+            .args([
                 "--info",
                 "--title", title,
                 "--text", message,
@@ -118,7 +118,7 @@ impl UiManager {
 
         if self.has_notify_send {
             let _ = Command::new("notify-send")
-                .args(&[
+                .args([
                     "--urgency", "critical",
                     title,
                     error,

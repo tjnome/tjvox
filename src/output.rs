@@ -216,12 +216,7 @@ impl OutputManager {
     }
 
     async fn ensure_ydotoold(&self) -> Result<()> {
-        let check = Command::new("pgrep")
-            .arg("ydotoold")
-            .output()
-            .await?;
-
-        if !check.status.success() {
+        if !is_process_running("ydotoold").await {
             warn!("ydotoold not running, attempting to start...");
             let _ = Command::new("ydotoold").spawn()?;
             sleep(Duration::from_millis(500)).await;
@@ -242,6 +237,38 @@ impl OutputManager {
         })
         .await?
     }
+}
+
+async fn is_process_running(name: &str) -> bool {
+    let name = name.to_string();
+    tokio::task::spawn_blocking(move || {
+        let proc_dir = match std::fs::read_dir("/proc") {
+            Ok(dir) => dir,
+            Err(_) => return false,
+        };
+
+        for entry in proc_dir.flatten() {
+            let file_name = entry.file_name();
+            let pid_str = file_name.to_string_lossy();
+            if pid_str.parse::<u32>().is_err() {
+                continue;
+            }
+
+            let comm_path = entry.path().join("comm");
+            let comm = match std::fs::read_to_string(comm_path) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+
+            if comm.trim() == name {
+                return true;
+            }
+        }
+
+        false
+    })
+    .await
+    .unwrap_or(false)
 }
 
 /// Detect if the currently focused window is a terminal emulator.

@@ -54,17 +54,12 @@ fn default_models_dir() -> String {
         .to_string()
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum WhisperMode {
     Hot,
+    #[default]
     Cold,
-}
-
-impl Default for WhisperMode {
-    fn default() -> Self {
-        WhisperMode::Cold
-    }
 }
 
 impl std::fmt::Display for WhisperMode {
@@ -203,16 +198,10 @@ fn default_max_entries() -> u32 {
     1000
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct InputConfig {
     #[serde(default)]
     pub ptt_key: Option<String>,
-}
-
-impl Default for InputConfig {
-    fn default() -> Self {
-        Self { ptt_key: None }
-    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

@@ -205,7 +205,7 @@ impl TranscriptionService {
         // Configure threads
         let threads = self.config.threads.unwrap_or_else(|| {
             let cpus = num_cpus::get() as u32;
-            std::cmp::max(1, std::cmp::min(8, cpus.saturating_sub(2)))
+            cpus.saturating_sub(2).clamp(1, 8)
         });
         params.set_n_threads(threads as i32);
 

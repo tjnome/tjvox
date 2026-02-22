@@ -22,7 +22,11 @@ pub struct OverlayWindow {
 }
 
 impl OverlayWindow {
-    pub fn new(app: &gtk4::Application, config: &OverlayConfig, layer_shell: Option<&LayerShellFns>) -> Self {
+    pub fn new(
+        app: &gtk4::Application,
+        config: &OverlayConfig,
+        layer_shell: Option<&LayerShellFns>,
+    ) -> Self {
         // Transparent window background via CSS
         let css_provider = gtk4::CssProvider::new();
         css_provider.load_from_data(
@@ -282,9 +286,9 @@ fn draw_waveform(
 
     let center = NUM_BARS / 2;
 
-    for i in 0..NUM_BARS {
+    for (i, level) in bar_levels.iter().enumerate().take(NUM_BARS) {
         let x = start_x + i as f64 * (bar_width + bar_gap);
-        let amp = bar_levels[i] as f64;
+        let amp = *level as f64;
 
         // Center weighting: center bars slightly taller
         let distance_from_center = ((i as f64 - center as f64) / center as f64).abs();

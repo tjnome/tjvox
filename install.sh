@@ -1,97 +1,104 @@
 #!/bin/bash
-# Build and install the tjvox binary
+# Build and install tjvox locally
 
-set -e
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+CUDA_MODE="auto"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --cuda)
+            CUDA_MODE="on"
+            shift
+            ;;
+        --cpu)
+            CUDA_MODE="off"
+            shift
+            ;;
+        --auto-cuda)
+            CUDA_MODE="auto"
+            shift
+            ;;
+        -h|--help)
+            cat <<'EOF'
+Usage: ./install.sh [--cuda | --cpu | --auto-cuda]
+
+Options:
+  --cuda        Force CUDA build (NVIDIA toolkit required)
+  --cpu         Force CPU build (disable CUDA)
+  --auto-cuda   Auto-detect CUDA toolkit and use it when available (default)
+  -h, --help  Show this help
+EOF
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Run ./install.sh --help for usage."
+            exit 1
+            ;;
+    esac
+done
+
+if ! command -v cargo >/dev/null 2>&1; then
+    echo "cargo not found in PATH. Install Rust toolchain first."
+    exit 1
+fi
 
 echo "Building tjvox binary..."
-
-# Enter dev container and build (needs cmake, clang, gcc-c++ for whisper.cpp)
-distrobox enter dev -- bash -c "
-    source ~/.cargo/env
-    cd /var/home/tjnome/dev/dictation
-    cargo build --release 2>&1
-"
-
-# Copy binary to host
-mkdir -p ~/.local/bin
-cp ~/dev/dictation/target/release/tjvox ~/.local/bin/
-chmod +x ~/.local/bin/tjvox
-
-# Create config directory
-mkdir -p ~/.config/tjvox
-
-# Create default config if it doesn't exist
-if [[ ! -f ~/.config/tjvox/config.toml ]]; then
-    echo "Creating default config..."
-    cat > ~/.config/tjvox/config.toml << 'EOF'
-[audio]
-sample_rate = 16000
-channels = 1
-format = "wav"
-temp_dir = "/tmp/tjvox"
-
-[transcription]
-model = "base"
-language = "en"
-# threads = 4  # auto-detect if omitted
-# remove_filler_words = false
-
-[whisper]
-mode = "cold"  # "hot" keeps model in memory, "cold" loads per transcription
-
-[output]
-delay_ms = 100
-paste_delay_ms = 50
-append_trailing_space = true
-method = "paste"  # "paste" (wl-copy + wtype) or "type" (ydotool)
-
-[ui]
-show_notifications = true
-notification_timeout_ms = 3000
-
-[overlay]
-enabled = true
-width = 280
-height = 50
-position = "bottom-center"
-opacity = 0.85
-EOF
+BUILD_ARGS=(--release --manifest-path "$SCRIPT_DIR/Cargo.toml")
+ENABLE_CUDA=false
+if [[ "$CUDA_MODE" == "on" ]]; then
+    ENABLE_CUDA=true
+elif [[ "$CUDA_MODE" == "auto" ]]; then
+    if command -v nvcc >/dev/null 2>&1; then
+        ENABLE_CUDA=true
+        echo "Detected CUDA toolkit (nvcc). Enabling CUDA build."
+    else
+        echo "No CUDA toolkit detected (nvcc not found). Using CPU build."
+    fi
 fi
 
-# Check for Wayland clipboard tools
-echo "Checking dependencies..."
-missing=""
-
-if ! command -v wl-copy &> /dev/null; then
-    missing="$missing wl-clipboard"
+if [[ "$ENABLE_CUDA" == true ]]; then
+    echo "CUDA build enabled (--features cuda)"
+    BUILD_ARGS+=(--features cuda)
 fi
 
-if ! command -v wtype &> /dev/null; then
-    missing="$missing wtype"
+cargo build "${BUILD_ARGS[@]}"
+
+mkdir -p "$HOME/.local/bin"
+cp "$SCRIPT_DIR/target/release/tjvox" "$HOME/.local/bin/tjvox"
+chmod +x "$HOME/.local/bin/tjvox"
+
+mkdir -p "$HOME/.config/tjvox"
+if [[ ! -f "$HOME/.config/tjvox/config.toml" ]]; then
+    if [[ -f "$SCRIPT_DIR/config/config.example.toml" ]]; then
+        echo "Installing default config from config/config.example.toml"
+        cp "$SCRIPT_DIR/config/config.example.toml" "$HOME/.config/tjvox/config.toml"
+    else
+        echo "No config example found; tjvox will create defaults on first run."
+    fi
 fi
 
-if [[ -n "$missing" ]]; then
-    echo "WARNING: Missing packages for paste mode:$missing"
-    echo "Install with: rpm-ostree install$missing --apply-live --idempotent"
+echo "Checking runtime tools..."
+missing=()
+
+if ! command -v wl-copy >/dev/null 2>&1; then
+    missing+=("wl-clipboard")
 fi
 
-echo ""
-echo "TJvox binary installed to ~/.local/bin/tjvox"
-echo ""
-echo "Usage:"
-echo "   tjvox gui       # Start with overlay and system tray (default)"
-echo "   tjvox run       # Run single session (press Enter to stop)"
-echo "   tjvox daemon    # Start headless background daemon"
-echo "   tjvox toggle    # Toggle recording (send SIGUSR1 to daemon)"
-echo "   tjvox status    # Check daemon status"
-echo "   tjvox stop      # Stop daemon"
-echo ""
-echo "Config: ~/.config/tjvox/config.toml"
-echo ""
-echo "First run will auto-download the whisper model (~150MB for 'base')."
-echo ""
-echo "Test it:"
-echo "   1. Open a text editor"
-echo "   2. Run: tjvox run"
-echo "   3. Speak, then press Enter to stop"
-echo "   4. Watch your text appear!"
+if ! command -v ydotool >/dev/null 2>&1 && ! command -v wtype >/dev/null 2>&1; then
+    missing+=("ydotool or wtype")
+fi
+
+if [[ ${#missing[@]} -gt 0 ]]; then
+    echo "WARNING: Missing runtime dependency(s): ${missing[*]}"
+    echo "Install packages with your distro package manager (dnf/apt/pacman)."
+fi
+
+echo
+echo "Installed: $HOME/.local/bin/tjvox"
+echo "Config:    $HOME/.config/tjvox/config.toml"
+echo
+echo "Try: tjvox --help"
